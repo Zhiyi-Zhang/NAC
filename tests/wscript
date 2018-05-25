@@ -1,0 +1,23 @@
+# -*- Mode: python; py-indent-offset: 4; indent-tabs-mode: nil; coding: utf-8; -*-
+from waflib import Utils
+
+top = '..'
+
+def build(bld):
+    test_main = bld(
+        target='tests-main',
+        name='tests-main',
+        features='cxx',
+        source=bld.path.ant_glob(['main.cpp']),
+        use='nac',
+        )
+
+    unit_test = bld.program(
+        target="../unit-tests",
+        source=bld.path.ant_glob(['unit-tests/**/*.cpp']),
+        features=['cxx', 'cxxprogram'],
+        use='nac tests-main',
+        includes=['.'],
+        install_path=None,
+        defines='TMP_TESTS_PATH=\"%s/tmp-tests\"' % bld.bldnode,
+        )
