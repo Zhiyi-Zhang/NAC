@@ -55,7 +55,22 @@ encryptDataContent(const uint8_t* payload, size_t payloadLen,
 }
 
 
+Buffer
+decryptDataContent(const Block& dataBlock,
+                   const uint8_t* key, size_t keyLen)
+{
+  Buffer iv(dataBlock.get(INITIAL_VECTOR).value(),
+            dataBlock.get(INITIAL_VECTOR).value_size());
+  Buffer encryptedAesKey(dataBlock.get(ENCRYPTED_AES_KEY).value(),
+                         dataBlock.get(ENCRYPTED_AES_KEY).value_size());
+  Buffer encryptedPayload(dataBlock.get(ENCRYPTED_PAYLOAD).value(),
+                          dataBlock.get(ENCRYPTED_PAYLOAD).value_size());
 
+  auto aesKey = crypto::Rsa::decrypt(key, keyLen, encryptedAesKey.data(), encryptedAesKey.size());
+  auto payload = crypto::Aes::decrypt(aesKey.data(), aesKey.size(),
+                                      encryptedPayload.data(), encryptedPayload.size(), iv);
+  return payload;
+}
 
 
 }

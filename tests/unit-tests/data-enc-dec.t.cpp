@@ -19,32 +19,37 @@
  * @author Zhiyi Zhang <zhiyi@cs.ucla.edu>
  */
 
-#ifndef NAC_DATA_ENC_DEC_HPP
-#define NAC_DATA_ENC_DEC_HPP
-
-#include "common.hpp"
+#include "data-enc-dec.hpp"
+#include "crypto/aes.hpp"
+#include "crypto/rsa.hpp"
+#include "boost-test.hpp"
+#include <algorithm>
 
 namespace ndn {
 namespace nac {
+namespace tests {
 
-enum {
-  ENCRYPTED_PAYLOAD = 130,
-  ENCRYPTED_AES_KEY = 131,
-  INITIAL_VECTOR = 132
-};
+const uint8_t plaintext[] = { 0x41, 0x45, 0x53, 0x2d, 0x45, 0x6e, 0x63, 0x72,
+                              0x79, 0x70, 0x74, 0x2d, 0x54, 0x65, 0x73, 0x74};
 
+BOOST_AUTO_TEST_SUITE(TestDataEncDec)
 
-Block
-encryptDataContent(const uint8_t* payload, size_t payloadLen,
-                   const uint8_t* key, size_t keyLen);
+BOOST_AUTO_TEST_CASE(EncryptionDecryption)
+{
+  RsaKeyParams params;
+  auto priKey = crypto::Rsa::generateKey(params);
+  auto pubKey = crypto::Rsa::deriveEncryptKey(priKey);
 
+  auto dataBlock = encryptDataContent(plaintext, sizeof(plaintext),
+                                      pubKey.data(), pubKey.size());
+  auto result = decryptDataContent(dataBlock, priKey.data(), priKey.size());
 
-Buffer
-decryptDataContent(const Block& dataBlock,
-                   const uint8_t* key, size_t keyLen);
+  BOOST_CHECK_EQUAL_COLLECTIONS(result.begin(), result.end(),
+                                plaintext, plaintext + sizeof(plaintext));
+}
 
+BOOST_AUTO_TEST_SUITE_END()
 
+} // namespace tests
 } // namespace nac
 } // namespace ndn
-
-#endif // NAC_DATA_ENC_DEC_HPP
