@@ -60,6 +60,7 @@
 #include <ndn-cxx/util/signal.hpp>
 #include <ndn-cxx/link.hpp>
 
+#include <ndn-cxx/security/v2/key-chain.hpp>
 #include <ndn-cxx/security/v2/validation-callback.hpp>
 #include <ndn-cxx/security/v2/validation-error.hpp>
 #include <ndn-cxx/security/v2/validator.hpp>
