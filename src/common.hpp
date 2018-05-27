@@ -24,7 +24,7 @@
 
 #include "config.hpp"
 
-#ifdef NDN_GEP_HAVE_TESTS
+#ifdef HAVE_TESTS
 #define VIRTUAL_WITH_TESTS virtual
 #define PUBLIC_WITH_TESTS_ELSE_PROTECTED public
 #define PUBLIC_WITH_TESTS_ELSE_PRIVATE public
@@ -36,91 +36,30 @@
 #define PROTECTED_WITH_TESTS_ELSE_PRIVATE private
 #endif
 
-/** \def DECL_OVERRIDE
- *  \brief expands to 'override' if compiler supports this feature, otherwise expands to nothing
- */
-#ifdef HAVE_CXX_OVERRIDE
-#define DECL_OVERRIDE override
-#else
-#define DECL_OVERRIDE
-#endif
-
 #include <cstddef>
-#include <list>
 #include <map>
-#include <queue>
-#include <set>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
+#include <iostream>
 
 #include <ndn-cxx/common.hpp>
 #include <ndn-cxx/data.hpp>
 #include <ndn-cxx/interest.hpp>
-#include <ndn-cxx/util/signal.hpp>
-#include <ndn-cxx/link.hpp>
-
-#include <ndn-cxx/security/v2/key-chain.hpp>
-#include <ndn-cxx/security/v2/validation-callback.hpp>
-#include <ndn-cxx/security/v2/validation-error.hpp>
-#include <ndn-cxx/security/v2/validator.hpp>
-#include <ndn-cxx/security/validator-null.hpp>
-
-#include <boost/algorithm/string.hpp>
-#include <boost/asio.hpp>
-#include <boost/assert.hpp>
-#include <boost/lexical_cast.hpp>
-#include <boost/noncopyable.hpp>
-#include <boost/property_tree/ptree.hpp>
+#include <ndn-cxx/face.hpp>
+#include <ndn-cxx/security/key-chain.hpp>
+#include <ndn-cxx/security/v2/certificate.hpp>
 
 namespace ndn {
 namespace nac {
 
 using std::size_t;
-
-using boost::noncopyable;
-
 using std::shared_ptr;
-using std::unique_ptr;
-using std::weak_ptr;
-using std::bad_weak_ptr;
-using std::make_shared;
-using std::enable_shared_from_this;
-
-using std::static_pointer_cast;
-using std::dynamic_pointer_cast;
-using std::const_pointer_cast;
-
-using std::function;
-using std::bind;
-using std::ref;
-using std::cref;
-
-using ndn::Interest;
-using ndn::Data;
-using ndn::Name;
-using ndn::Exclude;
-using ndn::Block;
-
-using security::v2::Certificate;
-using ndn::security::v2::Validator;
-using ndn::security::ValidatorNull;
-using security::v2::DataValidationSuccessCallback;
-using security::v2::DataValidationFailureCallback;
-using security::v2::ValidationError;
 
 namespace tlv {
 using namespace ndn::tlv;
 } // namespace tlv
 
-namespace name = ndn::name;
-namespace time = ndn::time;
-namespace signal = ndn::util::signal;
-
-const ndn::name::Component NAME_COMPONENT_BY("BY");
+const ndn::name::Component NAME_COMPONENT_BY("ENC-BY");
 const ndn::name::Component NAME_COMPONENT_E_KEY("E-KEY");
 const ndn::name::Component NAME_COMPONENT_D_KEY("D-KEY");
-const ndn::name::Component NAME_COMPONENT_C_KEY("C-KEY");
 
 } // namespace nac
 } // namespace ndn

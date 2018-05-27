@@ -33,14 +33,36 @@ public:
   Owner(const security::v2::Certificate& identityCert,
         security::v2::KeyChain& keyChain);
 
-  Data
-  generateDecKeyData(const Name& dataPrefix,
-                     const Name& decryptionKeyName,
+  /**
+   * @brief generate the encrypted decryption key for a consumer
+   * Naming Convention:
+   *   /prefix/consumer-identity/D-KEY/asymmeticKeyName
+   */
+  shared_ptr<Data>
+  generateDecKeyData(const Name& prefix,
+                     const Name& asymmeticKeyName,
                      const security::v2::Certificate& consumerCert);
 
-  Data
-  generateEncKeyData(const Name& dataPrefix,
-                     const Name& encryptionKeyName);
+  /**
+   * @brief generate the encryption key Data packet
+   * Naming Convention:
+   *   /prefix/E-KEY/asymmeticKeyName
+   */
+  shared_ptr<Data>
+  generateEncKeyData(const Name& prefix,
+                     const Name& asymmeticKeyName);
+
+  const std::map<Name, Buffer>
+  getDecryptionKeys()
+  {
+    return m_decKeys;
+  }
+
+  const std::map<Name, Buffer>
+  getEncryptionKeys()
+  {
+    return m_encKeys;
+  }
 
 private:
   security::v2::Certificate m_cert;

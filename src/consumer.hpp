@@ -23,6 +23,7 @@
 #define NAC_CONSUMER_HPP
 
 #include "common.hpp"
+#include <ndn-cxx/face.hpp>
 
 namespace ndn {
 namespace nac {
@@ -36,36 +37,59 @@ public:
 public:
   Consumer(const security::v2::Certificate& identityCert,
            const security::v2::Certificate& ownerCert,
-           security::v2::KeyChain& keyChain, Face& face,
+           const Buffer& decryptionKey,
+           Face& face,
            uint8_t repeatAttempts = 3);
 
   /**
    * @brief The function will NOT verify the signature, application can first
    *        verify the data signature and then invoke the function.
-   *        Will the decryption is missing, the function will send an Interest
-   *        to fetch the corresponding decryption key Data
    *
-   * @return the payload buffer
+   * @note When the decryption key is missing, the function will send an Interest
+   *       to fetch the corresponding decryption key Data. The owner app should
+   *       register the prefix to be able to answer the request Interest.
+   *
    */
-  Buffer
-  onPayloadData(const Data& data);
+  void
+  onPayloadData(const Data& data, const Name& ownerPrefix,
+                const ConsumptionCallback& consumptionCb,
+                const ErrorCallback& errorCb);
 
-private:
+PUBLIC_WITH_TESTS_ELSE_PRIVATE:
   /**
    * @brief The function will verify the signature using owner's certificate
-   * @return the decryption key buffer
    */
+  void
+  onDecryptionKeyData(const Interest& interest,
+                      const Data& data,
+                      const Block& encryptedContent,
+                      const Name& asymmetricKeyName,
+                      const ConsumptionCallback& consumptionCb,
+                      const ErrorCallback& errorCb);
+
   Buffer
-  onDecryptionKeyData(const Data& data);
+  decryptDKeyData(const Data& data, const ErrorCallback& errorCb);
+
+  void
+  handleTimeout(const Interest& interest, int nRetrials,
+                const Block& encryptedContent,
+                const Name& asymmetricKeyName,
+                const ConsumptionCallback& consumptionCb,
+                const ErrorCallback& errorCb);
+
+  void
+  handleNack(const Interest& interest,
+             const lp::Nack& nack,
+             const ErrorCallback& errorCb);
 
 private:
   security::v2::Certificate m_cert;
   security::v2::Certificate m_ownerCert;
-  security::v2::KeyChain& m_keyChain;
+  Buffer m_identityDecKey;
   Face& m_face;
   uint8_t m_repeatAttempts;
 
-  std::map<Name, Buffer> m_decryptionKeys;
+  std::map<Name, Buffer> m_decKeys;
 };
 
 

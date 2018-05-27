@@ -4,17 +4,22 @@ from waflib import Utils
 top = '..'
 
 def build(bld):
-    test_main = bld(
+    if not bld.env["WITH_TESTS"]:
+        return
+
+    tests_main = bld(
         target='tests-main',
         name='tests-main',
         features='cxx',
-        source=bld.path.ant_glob(['main.cpp']),
-        use='nac',
+        source="main.cpp",
+        use='nac BOOST',
+        defines=['BOOST_TEST_MODULE=\"NAC Tests\"']
         )
 
     unit_test = bld.program(
         target="../unit-tests",
-        source=bld.path.ant_glob(['unit-tests/**/*.cpp']),
+        source=bld.path.ant_glob(['*.cpp', 'unit-tests/**/*.cpp'],
+                                 excl=['main.cpp']),
         features=['cxx', 'cxxprogram'],
         use='nac tests-main',
         includes=['.'],

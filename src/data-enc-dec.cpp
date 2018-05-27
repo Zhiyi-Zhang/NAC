@@ -51,6 +51,7 @@ encryptDataContent(const uint8_t* payload, size_t payloadLen,
 
   content.push_back(makeBinaryBlock(INITIAL_VECTOR,
                                     iv.data(), iv.size()));
+  content.encode();
   return content;
 }
 
@@ -59,6 +60,7 @@ Buffer
 decryptDataContent(const Block& dataBlock,
                    const uint8_t* key, size_t keyLen)
 {
+  dataBlock.parse();
   Buffer iv(dataBlock.get(INITIAL_VECTOR).value(),
             dataBlock.get(INITIAL_VECTOR).value_size());
   Buffer encryptedAesKey(dataBlock.get(ENCRYPTED_AES_KEY).value(),

@@ -28,9 +28,9 @@ namespace ndn {
 namespace nac {
 
 enum {
-  ENCRYPTED_PAYLOAD = 130,
-  ENCRYPTED_AES_KEY = 131,
-  INITIAL_VECTOR = 132
+  ENCRYPTED_PAYLOAD = 630,
+  ENCRYPTED_AES_KEY = 631,
+  INITIAL_VECTOR = 632
 };
 
 

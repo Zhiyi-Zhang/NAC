@@ -23,7 +23,6 @@
 #include "crypto/aes.hpp"
 #include "crypto/rsa.hpp"
 #include "boost-test.hpp"
-#include <algorithm>
 
 namespace ndn {
 namespace nac {
@@ -42,6 +41,19 @@ BOOST_AUTO_TEST_CASE(EncryptionDecryption)
 
   auto dataBlock = encryptDataContent(plaintext, sizeof(plaintext),
                                       pubKey.data(), pubKey.size());
+
+  Buffer encryptedAesKey(dataBlock.get(ENCRYPTED_AES_KEY).value(),
+                         dataBlock.get(ENCRYPTED_AES_KEY).value_size());
+  BOOST_CHECK(encryptedAesKey.size() > 0);
+
+  Buffer encryptedPayload(dataBlock.get(ENCRYPTED_PAYLOAD).value(),
+                          dataBlock.get(ENCRYPTED_PAYLOAD).value_size());
+  BOOST_CHECK(encryptedPayload.size() > 0);
+
+  Buffer iv(dataBlock.get(INITIAL_VECTOR).value(),
+            dataBlock.get(INITIAL_VECTOR).value_size());
+  BOOST_CHECK(iv.size() > 0);
+
   auto result = decryptDataContent(dataBlock, priKey.data(), priKey.size());
 
   BOOST_CHECK_EQUAL_COLLECTIONS(result.begin(), result.end(),

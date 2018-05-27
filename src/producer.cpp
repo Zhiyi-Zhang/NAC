@@ -34,11 +34,14 @@ Producer::Producer(const security::v2::Certificate& identityCert,
 }
 
 void
-Producer::produce(const Name& dataName, const uint8_t* payload, size_t payloadLen,
-                  const Buffer& encryptionKey,
+Producer::produce(const Name& prefix,
+                  const uint8_t* payload, size_t payloadLen,
+                  const Name& asymmetricKeyName, const Buffer& encryptionKey,
                   const SuccessCallback& onDataProduceCb, const ErrorCallback& errorCallback)
 {
   Data data;
+  Name dataName(prefix);
+  dataName.append(NAME_COMPONENT_BY).append(asymmetricKeyName);
   data.setName(dataName);
   try {
     data.setContent(encryptDataContent(payload, payloadLen,
@@ -49,6 +52,25 @@ Producer::produce(const Name& dataName, const uint8_t* payload, size_t payloadLe
   catch (const std::exception& e) {
     errorCallback(e.what());
   }
+}
+
+std::tuple<Name, Buffer>
+Producer::parseEKeyData(const Data& eKeyData)
+{
+  int index = 0;
+  for (size_t i = 0; i < eKeyData.getName().size(); i++) {
+    if (eKeyData.getName().get(i) == NAME_COMPONENT_E_KEY) {
+      index = i;
+    }
+  }
+  if (index == 0) {
+    BOOST_THROW_EXCEPTION(Error("Unrecognized incoming E-KEY Data Name"));
+  }
+
+  Name asymmetricKeyName = eKeyData.getName().getSubName(index + 1);
+  auto content = eKeyData.getContent();
+  Buffer encKey(content.value(), content.value_size());
+  return std::make_tuple(asymmetricKeyName, encKey);
 }
 
 

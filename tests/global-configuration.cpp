@@ -15,56 +15,54 @@
  *
  * You should have received a copy of the GNU General Public License along with
  * NAC, e.g., in COPYING.md file.  If not, see <http://www.gnu.org/licenses/>.
- *
- * @author Zhiyi Zhang <zhiyi@cs.ucla.edu>
  */
 
-#ifndef NAC_PRODUCER_HPP
-#define NAC_PRODUCER_HPP
-
-#include "common.hpp"
+#include "boost-test.hpp"
+#include <boost/filesystem.hpp>
+#include <fstream>
+#include <stdlib.h>
 
 namespace ndn {
 namespace nac {
+namespace tests {
 
-class Producer
+class GlobalConfiguration
 {
 public:
-  class Error : public std::runtime_error
+  GlobalConfiguration()
   {
-  public:
-    using std::runtime_error::runtime_error;
-  };
+    const char* envHome = ::getenv("HOME");
+    if (envHome)
+      m_home = envHome;
 
-public:
-  using ErrorCallback = function<void (const std::string&)>;
-  using SuccessCallback = function<void (const Data&)>;
+    boost::filesystem::path dir{TMP_TESTS_PATH};
+    dir /= "test-home";
+    ::setenv("HOME", dir.c_str(), 1);
 
-public:
-  Producer(const security::v2::Certificate& identityCert,
-           security::v2::KeyChain& keyChain);
+    boost::filesystem::create_directories(dir);
+    std::ofstream clientConf((dir / ".ndn" / "client.conf").c_str());
+    clientConf << "pib=pib-sqlite3" << std::endl
+               << "tpm=tpm-file" << std::endl;
+  }
 
-  /**
-   * @brief produce Data packets
-   * Naming Convention:
-   *   /prefix/ENC-BY/asymmetricKeyName
-   */
-  void
-  produce(const Name& prefix,
-          const uint8_t* payload, size_t payloadLen,
-          const Name& asymmetricKeyName, const Buffer& encryptionKey,
-          const SuccessCallback& onDataProduceCb, const ErrorCallback& errorCallback);
-
-  std::tuple<Name, Buffer>
-  parseEKeyData(const Data& eKeyData);
+  ~GlobalConfiguration()
+  {
+    if (!m_home.empty())
+      ::setenv("HOME", m_home.data(), 1);
+  }
 
 private:
-  security::v2::Certificate m_cert;
-  security::v2::KeyChain& m_keyChain;
+  std::string m_home;
 };
 
+#if BOOST_VERSION >= 106500
+BOOST_TEST_GLOBAL_CONFIGURATION(GlobalConfiguration);
+#elif BOOST_VERSION >= 105900
+BOOST_GLOBAL_FIXTURE(GlobalConfiguration);
+#else
+BOOST_GLOBAL_FIXTURE(GlobalConfiguration)
+#endif
 
+} // namespace tests
 } // namespace nac
 } // namespace ndn
-
-#endif // NAC_PRODUCER_HPP
