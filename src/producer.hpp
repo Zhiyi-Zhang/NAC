@@ -37,10 +37,6 @@ public:
   };
 
 public:
-  using ErrorCallback = function<void (const std::string&)>;
-  using SuccessCallback = function<void (const Data&)>;
-
-public:
   Producer(const security::v2::Certificate& identityCert,
            security::v2::KeyChain& keyChain);
 
@@ -49,11 +45,10 @@ public:
    * Naming Convention:
    *   /prefix/ENC-BY/asymmetricKeyName
    */
-  void
+  shared_ptr<Data>
   produce(const Name& prefix,
           const uint8_t* payload, size_t payloadLen,
-          const Name& asymmetricKeyName, const Buffer& encryptionKey,
-          const SuccessCallback& onDataProduceCb, const ErrorCallback& errorCallback);
+          const Name& asymmetricKeyName, const Buffer& encryptionKey);
 
   std::tuple<Name, Buffer>
   parseEKeyData(const Data& eKeyData);

@@ -33,25 +33,19 @@ Producer::Producer(const security::v2::Certificate& identityCert,
 {
 }
 
-void
+shared_ptr<Data>
 Producer::produce(const Name& prefix,
                   const uint8_t* payload, size_t payloadLen,
-                  const Name& asymmetricKeyName, const Buffer& encryptionKey,
-                  const SuccessCallback& onDataProduceCb, const ErrorCallback& errorCallback)
+                  const Name& asymmetricKeyName, const Buffer& encryptionKey)
 {
-  Data data;
+  auto data = make_shared<Data>();
   Name dataName(prefix);
   dataName.append(NAME_COMPONENT_BY).append(asymmetricKeyName);
-  data.setName(dataName);
-  try {
-    data.setContent(encryptDataContent(payload, payloadLen,
-                                       encryptionKey.data(), encryptionKey.size()));
-    m_keyChain.sign(data, signingByCertificate(m_cert));
-    onDataProduceCb(data);
-  }
-  catch (const std::exception& e) {
-    errorCallback(e.what());
-  }
+  data->setName(dataName);
+  data->setContent(encryptDataContent(payload, payloadLen,
+                                     encryptionKey.data(), encryptionKey.size()));
+  m_keyChain.sign(*data, signingByCertificate(m_cert));
+  return data;
 }
 
 std::tuple<Name, Buffer>
