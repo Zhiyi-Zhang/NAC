@@ -28,68 +28,61 @@
 namespace ndn {
 namespace nac {
 
+/**
+ * In NAC, the consumer consumes content Data packet carrying the encrypted content
+ * produced by the producers. To decrypt the content, the consumer should learn D-KEY
+ * from the system owner. D-KEY data is encrypted and the consumer will use its own
+ * identity private key to decrypt the D-KEY
+ */
 class Consumer
 {
 public:
-  using ErrorCallback = function<void (const std::string&)>;
-  using ConsumptionCallback = function<void (const Buffer&)>;
+  class Error : public std::runtime_error
+  {
+  public:
+    using std::runtime_error::runtime_error;
+  };
 
 public:
-  Consumer(const security::v2::Certificate& identityCert,
-           const security::v2::Certificate& ownerCert,
-           const Buffer& decryptionKey,
-           Face& face,
-           uint8_t repeatAttempts = 3);
+  /**
+   * @brief Construct an Interest for the missing D-KEY
+   * @note The function will NOT verify the signature, application should first
+   *       verify the data signature and then invoke the function.
+   * @note The returned Interest packet is supposed to fetch a D-KEY data from the
+   *       owner. The app developer then should invoke Consumer::decryptDKeyData to
+   *       get D-KEY buffer and then further use Consumer::decryptConentData to obtain
+   *       the plaintext in the content Data
+   *
+   * @param contentData The Data packet carrying the encrypted content
+   * @param ownerPrefix The name prefix of the data owner in the NAC system
+   * @param consumerIdentity The consumer identity
+   */
+  static shared_ptr<Interest>
+  constructDKeyInterest(const Data& contentData,
+                        const Name& ownerPrefix, const Name& consumerIdentity);
 
   /**
-   * @brief The function will NOT verify the signature, application can first
+   * @brief Decrypt the content Data using the @p decryption key
+   * @note The function will NOT verify the signature, application should first
    *        verify the data signature and then invoke the function.
+   * @note The decryption key can be obtained by function Consumer::decryptDKeyData
    *
-   * @note When the decryption key is missing, the function will send an Interest
-   *       to fetch the corresponding decryption key Data. The owner app should
-   *       register the prefix to be able to answer the request Interest.
-   *
+   * @param contentData The Data packet carrying the encrypted content
+   * @param dKey The D-KEY obtained from Consumer::decryptDKeyData
    */
-  void
-  onPayloadData(const Data& data, const Name& ownerPrefix,
-                const ConsumptionCallback& consumptionCb,
-                const ErrorCallback& errorCb);
+  static Buffer
+  decryptContentData(const Data& contentData, const Buffer& dKey);
 
-PUBLIC_WITH_TESTS_ELSE_PRIVATE:
   /**
-   * @brief The function will verify the signature using owner's certificate
+   * @brief Decrypt the D-KEY Data provided by the data owner
+   * @note The function will NOT verify the signature, application should first
+   *       verify the data signature and then invoke the function.
+   *
+   * @param dKeyData The Data packet carrying the encrypted D-KEY
+   * @param identityPriKey Consumer's identity private key (paired with consumer cert key)
    */
-  void
-  onDecryptionKeyData(const Interest& interest,
-                      const Data& data,
-                      const Block& encryptedContent,
-                      const Name& asymmetricKeyName,
-                      const ConsumptionCallback& consumptionCb,
-                      const ErrorCallback& errorCb);
-
-  Buffer
-  decryptDKeyData(const Data& data, const ErrorCallback& errorCb);
-
-  void
-  handleTimeout(const Interest& interest, int nRetrials,
-                const Block& encryptedContent,
-                const Name& asymmetricKeyName,
-                const ConsumptionCallback& consumptionCb,
-                const ErrorCallback& errorCb);
-
-  void
-  handleNack(const Interest& interest,
-             const lp::Nack& nack,
-             const ErrorCallback& errorCb);
-
-private:
-  security::v2::Certificate m_cert;
-  security::v2::Certificate m_ownerCert;
-  Buffer m_identityDecKey;
-  Face& m_face;
-  uint8_t m_repeatAttempts;
-
-  std::map<Name, Buffer> m_decKeys;
+  static Buffer
+  decryptDKeyData(const Data& dKeyData, const Buffer& identityPriKey);
 };
 
 

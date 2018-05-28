@@ -26,139 +26,48 @@
 namespace ndn {
 namespace nac {
 
-Consumer::Consumer(const security::v2::Certificate& identityCert,
-                   const security::v2::Certificate& ownerCert,
-                   const Buffer& decryptionKey,
-                   Face& face,
-                   uint8_t repeatAttempts)
-  : m_cert(identityCert)
-  , m_ownerCert(ownerCert)
-  , m_identityDecKey(decryptionKey)
-  , m_face(face)
-  , m_repeatAttempts(repeatAttempts)
-{
-}
 
-
-void
-Consumer::onPayloadData(const Data& data, const Name& ownerPrefix,
-                        const ConsumptionCallback& consumptionCb,
-                        const ErrorCallback& errorCb)
+shared_ptr<Interest>
+Consumer::constructDKeyInterest(const Data& contentData,
+                                const Name& ownerPrefix, const Name& consumerIdentity)
 {
   int index = 0;
-  for (size_t i = 0; i < data.getName().size(); i++) {
-    if (data.getName().get(i) == NAME_COMPONENT_BY) {
+  for (size_t i = 0; i < contentData.getName().size(); i++) {
+    if (contentData.getName().get(i) == NAME_COMPONENT_BY) {
       index = i;
     }
   }
   if (index == 0) {
-    errorCb("Unrecognized incoming Data Name");
-    return;
+    BOOST_THROW_EXCEPTION(Error("Unrecognized incoming Data Name"));
   }
-
-  Name asymmetricKeyName = data.getName().getSubName(index + 1);
-  Buffer decKey;
-  auto search = m_decKeys.find(asymmetricKeyName);
-  if (search != m_decKeys.end()) {
-    decKey = m_decKeys[asymmetricKeyName];
-    try {
-      auto payload = decryptDataContent(data.getContent(), decKey.data(), decKey.size());
-      consumptionCb(payload);
-      return;
-    }
-    catch (const std::exception& e) {
-      errorCb("Cannot decrypt the payload: " + std::string(e.what()));
-      return;
-    }
-  }
-
+  Name asymmetricKeyName = contentData.getName().getSubName(index + 1);
   Name interestName(ownerPrefix);
-  interestName.append(security::v2::extractIdentityFromCertName(m_cert.getName()))
+  interestName.append(consumerIdentity)
     .append(NAME_COMPONENT_D_KEY)
     .append(asymmetricKeyName);
-  Interest request(interestName);
-  request.setMustBeFresh(true);
-  m_face.expressInterest(request,
-                         std::bind(&Consumer::onDecryptionKeyData, this, _1, _2, data.getContent(),
-                                   asymmetricKeyName, consumptionCb, errorCb),
-                         std::bind(&Consumer::handleNack, this, _1, _2, errorCb),
-                         std::bind(&Consumer::handleTimeout, this, _1, m_repeatAttempts,
-                                   data.getContent(), asymmetricKeyName, consumptionCb, errorCb));
+  auto request = make_shared<Interest>(interestName);
+  request->setMustBeFresh(true);
+  return request;
 }
+
 
 Buffer
-Consumer::decryptDKeyData(const Data& data, const ErrorCallback& errorCb)
+Consumer::decryptContentData(const Data& contentData, const Buffer& dKey)
 {
-  Buffer decKey;
-  try {
-    decKey = decryptDataContent(data.getContent(),
-                                m_identityDecKey.data(), m_identityDecKey.size());
-    std::cerr << "Successfully decrypt the D-KEY data and get the decryption KEY" << std::endl;
-    return decKey;
-  }
-  catch (const std::exception& e) {
-    errorCb("Cannot decrypt the dec key sent from the owner: " + std::string(e.what()));
-    return Buffer();
-  }
-
+  Buffer content = decryptDataContent(contentData.getContent(),
+                                      dKey.data(), dKey.size());
+  std::cerr << "Successfully decrypt the content data and get the content in plaintext \n";
+  return content;
 }
 
-void
-Consumer::onDecryptionKeyData(const Interest& interest,
-                              const Data& data,
-                              const Block& encryptedContent,
-                              const Name& asymmetricKeyName,
-                              const ConsumptionCallback& consumptionCb,
-                              const ErrorCallback& errorCb)
-{
-  if (!security::verifySignature(data, m_ownerCert)) {
-    errorCb("Cannot verify the D-KEY Data signature");
-    return;
-  }
 
-  Buffer decKey = decryptDKeyData(data, errorCb);
-  if (decKey.size() == 0) {
-    return;
-  }
-  try {
-    auto payload = decryptDataContent(encryptedContent, decKey.data(), decKey.size());
-    consumptionCb(payload);
-    return;
-  }
-  catch (const std::exception& e) {
-    errorCb("Cannot decrypt the payload: " + std::string(e.what()));
-    return;
-  }
-}
-
-void
-Consumer::handleTimeout(const Interest& interest, int nRetrials,
-                        const Block& encryptedContent,
-                        const Name& asymmetricKeyName,
-                        const ConsumptionCallback& consumptionCb,
-                        const ErrorCallback& errorCb)
+Buffer
+Consumer::decryptDKeyData(const Data& dKeyData, const Buffer& identityPriKey)
 {
-  if (nRetrials > 0) {
-    Interest request = interest;
-    request.refreshNonce();
-    m_face.expressInterest(request,
-                           std::bind(&Consumer::onDecryptionKeyData, this, _1, _2, encryptedContent,
-                                     asymmetricKeyName, consumptionCb, errorCb),
-                           std::bind(&Consumer::handleNack, this, _1, _2, errorCb),
-                           std::bind(&Consumer::handleTimeout, this, _1, nRetrials - 1,
-                                     encryptedContent, asymmetricKeyName, consumptionCb, errorCb));
-  }
-  else {
-    errorCb("Got Timeout after requesting the decryption key from owner");
-  }
-}
-
-void
-Consumer::handleNack(const Interest& interest,
-                     const lp::Nack& nack,
-                     const ErrorCallback& errorCb)
-{
-  errorCb("Got NACK after requesting the decryption key from owner");
+  Buffer decKey = decryptDataContent(dKeyData.getContent(),
+                                     identityPriKey.data(), identityPriKey.size());
+  std::cerr << "Successfully decrypt the D-KEY data and get the decryption KEY\n";
+  return decKey;
 }
 
 } // namespace nac

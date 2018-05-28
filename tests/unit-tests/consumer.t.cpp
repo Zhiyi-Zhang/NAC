@@ -19,8 +19,8 @@
  * @author Zhiyi Zhang <zhiyi@cs.ucla.edu>
  */
 
-#include "owner.hpp"
 #include "consumer.hpp"
+#include "owner.hpp"
 #include "producer.hpp"
 #include "crypto/rsa.hpp"
 #include "data-enc-dec.hpp"
@@ -31,7 +31,10 @@ namespace ndn {
 namespace nac {
 namespace tests {
 
-BOOST_FIXTURE_TEST_SUITE(TestOwner, IdentityManagementTimeFixture)
+const uint8_t plaintext[] = { 0x41, 0x45, 0x53, 0x2d, 0x45, 0x6e, 0x63, 0x72,
+                              0x79, 0x70, 0x74, 0x2d, 0x54, 0x65, 0x73, 0x74};
+
+BOOST_FIXTURE_TEST_SUITE(TestConsumer, IdentityManagementTimeFixture)
 
 BOOST_AUTO_TEST_CASE(PreparePackets)
 {
@@ -56,10 +59,15 @@ BOOST_AUTO_TEST_CASE(PreparePackets)
   auto dKeyData = owner.generateDecKeyData(Name("/owner"), Name("/location/8am/9am"), consumerCert);
   auto eKeyData = owner.generateEncKeyData(Name("/owner"), Name("/location/8am/9am"));
 
-  BOOST_CHECK_EQUAL(dKeyData->getName(),
-                    Name("/owner/consumer/D-KEY/location/8am/9am"));
-  BOOST_CHECK_EQUAL(eKeyData->getName(),
-                    Name("/owner/E-KEY/location/8am/9am"));
+  Producer producer(producerCert, m_keyChain);
+  Name keyName;
+  Buffer keyBuffer;
+  std::tie(keyName, keyBuffer) = producer.parseEKeyData(*eKeyData);
+  auto contentData = producer.produce(Name("/producer/location"), plaintext, sizeof(plaintext),
+                                      keyName, keyBuffer);
+
+  auto request = Consumer::constructDKeyInterest(*contentData, Name("/owner"), Name("/consumer"));
+  BOOST_CHECK_EQUAL(request->getName(), Name("/owner/consumer/D-KEY/location/8am/9am"));
 
   auto dKey = Consumer::decryptDKeyData(*dKeyData, consumerPriKey);
   auto dKeys = owner.getDecryptionKeys();
@@ -67,15 +75,9 @@ BOOST_AUTO_TEST_CASE(PreparePackets)
   BOOST_CHECK_EQUAL_COLLECTIONS(dKey.begin(), dKey.end(),
                                 rightDKey.begin(), rightDKey.end());
 
-  Producer producer(producerCert, m_keyChain);
-  Name keyName;
-  Buffer keyBuffer;
-  std::tie(keyName, keyBuffer) = producer.parseEKeyData(*eKeyData);
-  BOOST_CHECK_EQUAL(keyName, Name("/location/8am/9am"));
-  auto eKeys = owner.getEncryptionKeys();
-  auto rightEKey = eKeys[keyName];
-  BOOST_CHECK_EQUAL_COLLECTIONS(rightEKey.begin(), rightEKey.end(),
-                                keyBuffer.begin(), keyBuffer.end());
+  auto afterDec = Consumer::decryptContentData(*contentData, dKey);
+  BOOST_CHECK_EQUAL_COLLECTIONS(plaintext, plaintext + sizeof(plaintext),
+                                afterDec.begin(), afterDec.end());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

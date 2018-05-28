@@ -27,6 +27,12 @@
 namespace ndn {
 namespace nac {
 
+/**
+ * In NAC, the owner generates D-KEY (decryption KEY) and E-KEY (encryption KEY).
+ * The producers use E-KEY to encrypt content while consumers use D-KEY to decrypt
+ * the content. D-KEY Data will be encrypted by consumer's private key. E-KEY will
+ * not be encrypted.
+ */
 class Owner
 {
 public:
@@ -34,9 +40,17 @@ public:
         security::v2::KeyChain& keyChain);
 
   /**
-   * @brief generate the encrypted decryption key for a consumer
-   * Naming Convention:
-   *   /prefix/consumer-identity/D-KEY/asymmeticKeyName
+   * @brief Generate the encrypted D-KEY for a consumer
+   * @note Naming Convention:
+   *       /prefix/consumer-identity/D-KEY/asymmeticKeyName
+   * @note The generated Data packet will carry the encrypted D-KEY for
+   *       the consumer. Consumer can decrypt the D-KEY using the corresponding
+   *       private key. The packet will be signed with owner's identity cert.
+   *
+   * @param prefix The Data packet prefix
+   * @param asymmeticKeyName The last component of the Data name
+   * @param consumerCert Consumer's certificate
+   * @return The generated D-KEY Data
    */
   shared_ptr<Data>
   generateDecKeyData(const Name& prefix,
@@ -44,22 +58,28 @@ public:
                      const security::v2::Certificate& consumerCert);
 
   /**
-   * @brief generate the encryption key Data packet
-   * Naming Convention:
-   *   /prefix/E-KEY/asymmeticKeyName
+   * @brief Generate the encryption key Data packet
+   * @note Naming Convention:
+   *       /prefix/E-KEY/asymmeticKeyName
+   * @note The generated Data packet will carry the E-KEY (plaintext) for
+   *       the producers. The packet will be signed with owner's identity cert.
+   *
+   * @param prefix The Data packet prefix
+   * @param asymmeticKeyName The last component of the Data name
+   * @return The generated E-KEY Data
    */
   shared_ptr<Data>
   generateEncKeyData(const Name& prefix,
                      const Name& asymmeticKeyName);
 
   const std::map<Name, Buffer>
-  getDecryptionKeys()
+  getDecryptionKeys() const
   {
     return m_decKeys;
   }
 
   const std::map<Name, Buffer>
-  getEncryptionKeys()
+  getEncryptionKeys() const
   {
     return m_encKeys;
   }

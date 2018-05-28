@@ -19,9 +19,9 @@
  * @author Zhiyi Zhang <zhiyi@cs.ucla.edu>
  */
 
+#include "producer.hpp"
 #include "consumer.hpp"
 #include "owner.hpp"
-#include "producer.hpp"
 #include "crypto/rsa.hpp"
 #include "data-enc-dec.hpp"
 #include "identity-management-fixture.hpp"
