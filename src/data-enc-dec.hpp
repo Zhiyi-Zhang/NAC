@@ -23,6 +23,7 @@
 #define NAC_DATA_ENC_DEC_HPP
 
 #include "common.hpp"
+#include <tuple>
 
 namespace ndn {
 namespace nac {
@@ -30,11 +31,16 @@ namespace nac {
 enum {
   ENCRYPTED_PAYLOAD = 630,
   ENCRYPTED_AES_KEY = 631,
-  INITIAL_VECTOR = 632
+  INITIAL_VECTOR = 632,
+  ENCRYPTED_CK = 633,
+  CK_LOCATOR = 634
 };
 
-
 Block
+encryptDataContentWithCK(const uint8_t* payload, size_t payloadLen,
+                         const uint8_t* key, size_t keyLen);
+
+std::tuple<Block, Block>
 encryptDataContent(const uint8_t* payload, size_t payloadLen,
                    const uint8_t* key, size_t keyLen);
 

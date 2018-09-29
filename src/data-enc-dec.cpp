@@ -26,10 +26,9 @@
 namespace ndn {
 namespace nac {
 
-
 Block
-encryptDataContent(const uint8_t* payload, size_t payloadLen,
-                   const uint8_t* key, size_t keyLen)
+encryptDataContentWithCK(const uint8_t* payload, size_t payloadLen,
+                         const uint8_t* key, size_t keyLen)
 {
   // first create AES key and encrypt the payload
   AesKeyParams param;
@@ -53,6 +52,35 @@ encryptDataContent(const uint8_t* payload, size_t payloadLen,
                                     iv.data(), iv.size()));
   content.encode();
   return content;
+}
+
+std::tuple<Block, Block>
+encryptDataContent(const uint8_t* payload, size_t payloadLen,
+                   const uint8_t* key, size_t keyLen)
+{
+  // first create AES key and encrypt the payload
+  AesKeyParams param;
+  auto aesKey = crypto::Aes::generateKey(param);
+  auto iv = crypto::Aes::generateIV();
+  auto encryptedPayload = crypto::Aes::encrypt(aesKey.data(), aesKey.size(),
+                                               payload, payloadLen, iv);
+
+  // second use RSA key to encrypt the AES key
+  auto encryptedAesKey = crypto::Rsa::encrypt(key, keyLen, aesKey.data(), aesKey.size());
+
+  // create encrypted content block
+  auto encryptedBlock = makeBinaryBlock(ENCRYPTED_PAYLOAD,
+                                        encryptedPayload.data(), encryptedPayload.size());
+  encryptedBlock.encode();
+
+  // create ck block
+  auto CKBlock = makeEmptyBlock(ENCRYPTED_CK);
+  CKBlock.push_back(makeBinaryBlock(ENCRYPTED_AES_KEY,
+                                    encryptedAesKey.data(), encryptedAesKey.size()));
+  CKBlock.push_back(makeBinaryBlock(INITIAL_VECTOR,
+                                    iv.data(), iv.size()));
+  CKBlock.encode();
+  return std::make_tuple(encryptedBlock, CKBlock);
 }
 
 

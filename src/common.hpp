@@ -58,8 +58,9 @@ using namespace ndn::tlv;
 } // namespace tlv
 
 const ndn::name::Component NAME_COMPONENT_BY("ENC-BY");
-const ndn::name::Component NAME_COMPONENT_E_KEY("E-KEY");
-const ndn::name::Component NAME_COMPONENT_D_KEY("D-KEY");
+const ndn::name::Component NAME_COMPONENT_E_KEY("KEK");
+const ndn::name::Component NAME_COMPONENT_D_KEY("KDK");
+const ndn::name::Component NAME_COMPONENT_NAC("NAC");
 
 } // namespace nac
 } // namespace ndn

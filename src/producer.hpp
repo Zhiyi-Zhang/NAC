@@ -47,13 +47,13 @@ public:
   /**
    * @brief Produce a content Data packet
    * @note Naming Convention:
-   *       /prefix/ENC-BY/asymmetricKeyName
+   *       /name
    * @note The generated Data packet carries the encrypted payload. The app
    *       developer should get the E-KEY Data from the data owner and invoke
    *       Producer::parseEKeyData to get the key name and the key buffer.
    *       The generated Data packet will be signed with producer's identity cert.
    *
-   * @param prefix The Data packet prefix
+   * @param name The Data packet name
    * @param payload The payload bytes
    * @param payloadLen The payload bytes length
    * @param asymmetricKeyName The name of D-KEY and E-KEY. Obtained from
@@ -62,8 +62,8 @@ public:
    *        Obtained from Producer::parseEKeyData.
    * @return The generated content Data
    */
-  shared_ptr<Data>
-  produce(const Name& prefix,
+  std::tuple<shared_ptr<Data>, shared_ptr<Data>>
+  produce(const Name& name,
           const uint8_t* payload, size_t payloadLen,
           const Name& asymmetricKeyName, const Buffer& encryptionKey);
 

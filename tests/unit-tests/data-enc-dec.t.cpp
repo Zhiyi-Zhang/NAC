@@ -39,8 +39,8 @@ BOOST_AUTO_TEST_CASE(EncryptionDecryption)
   auto priKey = crypto::Rsa::generateKey(params);
   auto pubKey = crypto::Rsa::deriveEncryptKey(priKey);
 
-  auto dataBlock = encryptDataContent(plaintext, sizeof(plaintext),
-                                      pubKey.data(), pubKey.size());
+  auto dataBlock = encryptDataContentWithCK(plaintext, sizeof(plaintext),
+                                            pubKey.data(), pubKey.size());
 
   Buffer encryptedAesKey(dataBlock.get(ENCRYPTED_AES_KEY).value(),
                          dataBlock.get(ENCRYPTED_AES_KEY).value_size());

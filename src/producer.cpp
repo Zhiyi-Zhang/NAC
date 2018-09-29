@@ -22,6 +22,7 @@
 #include "producer.hpp"
 #include "data-enc-dec.hpp"
 #include <ndn-cxx/security/signing-helpers.hpp>
+#include <ndn-cxx/util/random.hpp>
 
 namespace ndn {
 namespace nac {
@@ -33,38 +34,62 @@ Producer::Producer(const security::v2::Certificate& identityCert,
 {
 }
 
-shared_ptr<Data>
-Producer::produce(const Name& prefix,
+std::tuple<shared_ptr<Data>, shared_ptr<Data>>
+Producer::produce(const Name& name,
                   const uint8_t* payload, size_t payloadLen,
                   const Name& asymmetricKeyName, const Buffer& encryptionKey)
 {
+  // prepare
+  Block encryptedContent;
+  Block encryptedCK;
+  std::tie(encryptedContent, encryptedCK) = encryptDataContent(payload, payloadLen,
+                                                               encryptionKey.data(),
+                                                               encryptionKey.size());
+  Name ckName = security::v2::extractIdentityFromCertName(m_cert.getName());
+  ckName.append("CK").append(std::to_string(random::generateSecureWord32()));
+
+
+  // data packet
   auto data = make_shared<Data>();
-  Name dataName(prefix);
-  dataName.append(NAME_COMPONENT_BY).append(asymmetricKeyName);
-  data->setName(dataName);
-  data->setContent(encryptDataContent(payload, payloadLen,
-                                     encryptionKey.data(), encryptionKey.size()));
+  data->setName(name);
+  auto content = makeEmptyBlock(tlv::Content);
+  auto ckNameBlock = ckName.wireEncode();
+  content.push_back(ckNameBlock);
+  content.push_back(encryptedContent);
+  content.encode();
+  data->setContent(content);
   m_keyChain.sign(*data, signingByCertificate(m_cert));
-  return data;
+
+
+  // ck data packet
+  auto ckData = make_shared<Data>();
+  Name ckDataName = ckName;
+  ckDataName.append(NAME_COMPONENT_BY).append(asymmetricKeyName);
+  ckData->setName(ckDataName);
+  ckData->setContent(encryptedCK);
+  m_keyChain.sign(*ckData, signingByCertificate(m_cert));
+  return std::make_tuple(data, ckData);
 }
 
 std::tuple<Name, Buffer>
 Producer::parseEKeyData(const Data& eKeyData)
 {
-  int index = 0;
+  // Naming Convention: /prefix/NAC/granularity/KEK/<key-id>
+
+  int nac_index = 0;
   for (size_t i = 0; i < eKeyData.getName().size(); i++) {
-    if (eKeyData.getName().get(i) == NAME_COMPONENT_E_KEY) {
-      index = i;
+    if (eKeyData.getName().get(i) == NAME_COMPONENT_NAC) {
+      nac_index = i;
     }
   }
-  if (index == 0) {
+  if (nac_index == 0) {
     BOOST_THROW_EXCEPTION(Error("Unrecognized incoming E-KEY Data Name"));
   }
 
-  Name asymmetricKeyName = eKeyData.getName().getSubName(index + 1);
+  Name kekName = eKeyData.getName().getSubName(nac_index + 1);
   auto content = eKeyData.getContent();
   Buffer encKey(content.value(), content.value_size());
-  return std::make_tuple(asymmetricKeyName, encKey);
+  return std::make_tuple(kekName, encKey);
 }
 
 

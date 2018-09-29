@@ -24,6 +24,7 @@
 #include "crypto/rsa.hpp"
 #include <ndn-cxx/encoding/block-helpers.hpp>
 #include <ndn-cxx/security/signing-helpers.hpp>
+#include <ndn-cxx/util/random.hpp>
 
 namespace ndn {
 namespace nac {
@@ -37,56 +38,57 @@ Owner::Owner(const security::v2::Certificate& identityCert,
 
 shared_ptr<Data>
 Owner::generateDecKeyData(const Name& prefix,
-                          const Name& asymmeticKeyName,
+                          const Name& granularity,
                           const security::v2::Certificate& consumerCert)
 {
   Buffer encKey = consumerCert.getPublicKey();
   Buffer payload;
-  auto search = m_decKeys.find(asymmeticKeyName);
+  auto search = m_decKeys.find(granularity);
   if (search != m_decKeys.end()) {
-    payload = m_decKeys[asymmeticKeyName];
+    payload = m_decKeys[granularity];
   }
   else {
     RsaKeyParams params;
     payload = crypto::Rsa::generateKey(params);
-    m_decKeys[asymmeticKeyName] = payload;
-    m_encKeys[asymmeticKeyName] = crypto::Rsa::deriveEncryptKey(payload);
+    m_decKeys[granularity] = payload;
+    m_encKeys[granularity] = crypto::Rsa::deriveEncryptKey(payload);
   }
 
-  // Naming Convention: /prefix/consumer-identity/D-KEY/asymmeticKeyName
+  // Naming Convention: /prefix/NAC/granularity/KDK/<key-id>/ENC-BY
+  //                    consumer-identity/KEY/<key-id>
   auto dKeyData = make_shared<Data>();
   Name name(prefix);
-  name.append(security::v2::extractIdentityFromCertName(consumerCert.getName()))
-    .append(NAME_COMPONENT_D_KEY)
-    .append(asymmeticKeyName);
+  name.append(NAME_COMPONENT_NAC).append(granularity).append(NAME_COMPONENT_D_KEY)
+    .append(security::v2::extractKeyNameFromCertName(consumerCert.getName()));
   dKeyData->setName(name);
-  dKeyData->setContent(encryptDataContent(payload.data(), payload.size(),
-                                          encKey.data(), encKey.size()));
+  dKeyData->setContent(encryptDataContentWithCK(payload.data(), payload.size(),
+                                                encKey.data(), encKey.size()));
   m_keyChain.sign(*dKeyData, signingByCertificate(m_cert));
   return dKeyData;
 }
 
 shared_ptr<Data>
 Owner::generateEncKeyData(const Name& prefix,
-                          const Name& asymmeticKeyName)
+                          const Name& granularity)
 {
   Buffer payload;
-  auto search = m_encKeys.find(asymmeticKeyName);
+  auto search = m_encKeys.find(granularity);
   if (search != m_encKeys.end()) {
-    payload = m_encKeys[asymmeticKeyName];
+    payload = m_encKeys[granularity];
   }
   else {
     RsaKeyParams params;
     auto decKey = crypto::Rsa::generateKey(params);
-    m_decKeys[asymmeticKeyName] = decKey;
-    m_encKeys[asymmeticKeyName] = crypto::Rsa::deriveEncryptKey(decKey);
-    payload = m_encKeys[asymmeticKeyName];
+    m_decKeys[granularity] = decKey;
+    m_encKeys[granularity] = crypto::Rsa::deriveEncryptKey(decKey);
+    payload = m_encKeys[granularity];
   }
 
-  // Naming Convention: /prefix/E-KEY/asymmeticKeyName
+  // Naming Convention: /prefix/NAC/granularity/KEK/<key-id>
   auto eKeyData = make_shared<Data>();
   Name name(prefix);
-  name.append(NAME_COMPONENT_E_KEY).append(asymmeticKeyName);
+  name.append(NAME_COMPONENT_NAC).append(granularity)
+    .append(NAME_COMPONENT_E_KEY).append(std::to_string(random::generateSecureWord32()));;
   eKeyData->setName(name);
   eKeyData->setContent(makeBinaryBlock(tlv::Content, payload.data(), payload.size()));
   m_keyChain.sign(*eKeyData, signingByCertificate(m_cert));

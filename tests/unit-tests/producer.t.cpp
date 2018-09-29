@@ -31,43 +31,64 @@ namespace ndn {
 namespace nac {
 namespace tests {
 
-const uint8_t plaintext[] = { 0x41, 0x45, 0x53, 0x2d, 0x45, 0x6e, 0x63, 0x72,
-                              0x79, 0x70, 0x74, 0x2d, 0x54, 0x65, 0x73, 0x74};
+const uint8_t plaintext[1024] = {1};
 
 BOOST_FIXTURE_TEST_SUITE(TestProducer, IdentityManagementTimeFixture)
 
 BOOST_AUTO_TEST_CASE(PreparePackets)
 {
+  // prepare certificates for owner and producer
   RsaKeyParams params;
-  auto ownerId = addIdentity(Name("/owner"), params);
+  auto ownerId = addIdentity(Name("/access-controller"));
   auto ownerKey = ownerId.getDefaultKey();
   auto ownerCert = ownerKey.getDefaultCertificate();
 
-  auto producerId = addIdentity(Name("/producer"), params);
+  auto producerId = addIdentity(Name("/encryptor"));
   auto producerKey = producerId.getDefaultKey();
   auto producerCert = producerKey.getDefaultCertificate();
 
+  // create owner and KEK
   Owner owner(ownerCert, m_keyChain);
-  auto eKeyData = owner.generateEncKeyData(Name("/owner"), Name("/location/8am/9am"));
+  auto eKeyData = owner.generateEncKeyData(Name("/access-controller"), Name("/producer/dataset1/example"));
 
+  std::cout << "eKeyData Data \n" << *eKeyData;
+  std::cout << "eKeyData Data size :" << eKeyData->wireEncode().size() << std::endl;
+  std::cout << "eKeyData Data name size :" << eKeyData->getName().wireEncode().size() << std::endl;
+  std::cout << "===============================\n";
+
+  // create producer
   Producer producer(producerCert, m_keyChain);
   Name keyName;
   Buffer keyBuffer;
   std::tie(keyName, keyBuffer) = producer.parseEKeyData(*eKeyData);
-  BOOST_CHECK_EQUAL(keyName, Name("/location/8am/9am"));
+  BOOST_CHECK_EQUAL(keyName.getPrefix(-2), Name("/producer/dataset1/example"));
+
   auto eKeys = owner.getEncryptionKeys();
-  auto rightKey = eKeys[keyName];
+  auto rightKey = eKeys[keyName.getPrefix(-2)];
   BOOST_CHECK_EQUAL_COLLECTIONS(rightKey.begin(), rightKey.end(),
                                 keyBuffer.begin(), keyBuffer.end());
 
-  auto contentData = producer.produce(Name("/producer/location"), plaintext, sizeof(plaintext),
-                                      keyName, keyBuffer);
-  auto dKeys = owner.getDecryptionKeys();
-  auto priKey = dKeys[keyName];
-  auto afterDec = decryptDataContent(contentData->getContent(), priKey.data(), priKey.size());
+  shared_ptr<Data> contentData = nullptr;
+  shared_ptr<Data> ckData = nullptr;
+  std::tie(contentData, ckData) = producer.produce(Name("/producer/dataset1/example/data1"), plaintext, sizeof(plaintext),
+                                                   keyName, keyBuffer);
 
-  BOOST_CHECK_EQUAL_COLLECTIONS(plaintext, plaintext + sizeof(plaintext),
-                                afterDec.begin(), afterDec.end());
+  std::cout << "content Data \n" << *contentData;
+  std::cout << "content Data size :" << contentData->wireEncode().size() << std::endl;
+  std::cout << "content Data name size :" << contentData->getName().wireEncode().size() << std::endl;
+  std::cout << "===============================\n";
+
+  std::cout << "ck Data \n" << *ckData;
+  std::cout << "ck Data size :" << ckData->wireEncode().size() << std::endl;
+  std::cout << "ck Data name size :" << ckData->getName().wireEncode().size() << std::endl;
+  std::cout << "===============================\n";
+
+  // auto dKeys = owner.getDecryptionKeys();
+  // auto priKey = dKeys[keyName];
+  // auto afterDec = decryptDataContent(contentData->getContent(), priKey.data(), priKey.size());
+
+  // BOOST_CHECK_EQUAL_COLLECTIONS(plaintext, plaintext + sizeof(plaintext),
+  //                               afterDec.begin(), afterDec.end());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

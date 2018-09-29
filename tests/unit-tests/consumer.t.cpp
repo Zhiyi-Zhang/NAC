@@ -66,18 +66,18 @@ BOOST_AUTO_TEST_CASE(PreparePackets)
   auto contentData = producer.produce(Name("/producer/location"), plaintext, sizeof(plaintext),
                                       keyName, keyBuffer);
 
-  auto request = Consumer::constructDKeyInterest(*contentData, Name("/owner"), Name("/consumer"));
-  BOOST_CHECK_EQUAL(request->getName(), Name("/owner/consumer/D-KEY/location/8am/9am"));
+  // auto request = Consumer::constructDKeyInterest(*contentData, Name("/owner"), Name("/consumer"));
+  // BOOST_CHECK_EQUAL(request->getName(), Name("/owner/consumer/D-KEY/location/8am/9am"));
 
-  auto dKey = Consumer::decryptDKeyData(*dKeyData, consumerPriKey);
-  auto dKeys = owner.getDecryptionKeys();
-  auto rightDKey = dKeys[Name("/location/8am/9am")];
-  BOOST_CHECK_EQUAL_COLLECTIONS(dKey.begin(), dKey.end(),
-                                rightDKey.begin(), rightDKey.end());
+  // auto dKey = Consumer::decryptDKeyData(*dKeyData, consumerPriKey);
+  // auto dKeys = owner.getDecryptionKeys();
+  // auto rightDKey = dKeys[Name("/location/8am/9am")];
+  // BOOST_CHECK_EQUAL_COLLECTIONS(dKey.begin(), dKey.end(),
+  //                               rightDKey.begin(), rightDKey.end());
 
-  auto afterDec = Consumer::decryptContentData(*contentData, dKey);
-  BOOST_CHECK_EQUAL_COLLECTIONS(plaintext, plaintext + sizeof(plaintext),
-                                afterDec.begin(), afterDec.end());
+  // auto afterDec = Consumer::decryptContentData(*contentData, dKey);
+  // BOOST_CHECK_EQUAL_COLLECTIONS(plaintext, plaintext + sizeof(plaintext),
+  //                               afterDec.begin(), afterDec.end());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
