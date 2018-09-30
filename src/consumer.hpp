@@ -44,6 +44,9 @@ public:
   };
 
 public:
+  static shared_ptr<Interest>
+  constructCKeyInterest(const Data& contentData);
+
   /**
    * @brief Construct an Interest for the missing D-KEY
    * @note The function will NOT verify the signature, application should first
@@ -53,13 +56,12 @@ public:
    *       get D-KEY buffer and then further use Consumer::decryptConentData to obtain
    *       the plaintext in the content Data
    *
-   * @param contentData The Data packet carrying the encrypted content
+   * @param ckData The CK Data packet carrying the encrypted CK
    * @param ownerPrefix The name prefix of the data owner in the NAC system
    * @param consumerIdentity The consumer identity
    */
   static shared_ptr<Interest>
-  constructDKeyInterest(const Data& contentData,
-                        const Name& ownerPrefix, const Name& consumerIdentity);
+  constructDKeyInterest(const Data& ckData, const Name& consumerIdentity);
 
   /**
    * @brief Decrypt the content Data using the @p decryption key
@@ -71,7 +73,7 @@ public:
    * @param dKey The D-KEY obtained from Consumer::decryptDKeyData
    */
   static Buffer
-  decryptContentData(const Data& contentData, const Buffer& dKey);
+  decryptContentData(const Data& contentData, const Data& cKeyData, const Buffer& dKey);
 
   /**
    * @brief Decrypt the D-KEY Data provided by the data owner

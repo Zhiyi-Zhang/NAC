@@ -31,53 +31,58 @@ namespace ndn {
 namespace nac {
 namespace tests {
 
-const uint8_t plaintext[] = { 0x41, 0x45, 0x53, 0x2d, 0x45, 0x6e, 0x63, 0x72,
-                              0x79, 0x70, 0x74, 0x2d, 0x54, 0x65, 0x73, 0x74};
+const uint8_t plaintext[1024] = {1};
 
 BOOST_FIXTURE_TEST_SUITE(TestConsumer, IdentityManagementTimeFixture)
 
 BOOST_AUTO_TEST_CASE(PreparePackets)
 {
   RsaKeyParams params;
-  auto ownerId = addIdentity(Name("/owner"), params);
+  auto ownerId = addIdentity(Name("/access-manager"));
   auto ownerKey = ownerId.getDefaultKey();
   auto ownerCert = ownerKey.getDefaultCertificate();
 
-  auto producerId = addIdentity(Name("/producer"), params);
+  auto producerId = addIdentity(Name("/producer"));
   auto producerKey = producerId.getDefaultKey();
   auto producerCert = producerKey.getDefaultCertificate();
 
   auto consumerPriKey = crypto::Rsa::generateKey(params);
   auto consumerPubKey = crypto::Rsa::deriveEncryptKey(consumerPriKey);
   security::v2::Certificate consumerCert;
-  consumerCert.setName(Name("/consumer/KEY/key001/self/cert001"));
+  consumerCert.setName(Name("/consumer/KEY/key001/self/001"));
   consumerCert.setContent(makeBinaryBlock(tlv::Content,
                                           consumerPubKey.data(), consumerPubKey.size()));
   signData(consumerCert);
 
   Owner owner(ownerCert, m_keyChain);
-  auto dKeyData = owner.generateDecKeyData(Name("/owner"), Name("/location/8am/9am"), consumerCert);
-  auto eKeyData = owner.generateEncKeyData(Name("/owner"), Name("/location/8am/9am"));
+  auto dKeyData = owner.generateDecKeyData(Name("/producer/dataset1/example"), consumerCert);
+  auto eKeyData = owner.generateEncKeyData(Name("/producer/dataset1/example"));
 
   Producer producer(producerCert, m_keyChain);
-  Name keyName;
-  Buffer keyBuffer;
-  std::tie(keyName, keyBuffer) = producer.parseEKeyData(*eKeyData);
-  auto contentData = producer.produce(Name("/producer/location"), plaintext, sizeof(plaintext),
-                                      keyName, keyBuffer);
+  // Name keyName;
+  // Buffer keyBuffer;
+  // std::tie(keyName, keyBuffer) = producer.parseEKeyData(*eKeyData);
+  shared_ptr<Data> contentData = nullptr;
+  shared_ptr<Data> ckData = nullptr;
+  std::tie(contentData, ckData) = producer.produce(Name("/producer/dataset1/example/data1"),
+                                                   plaintext, sizeof(plaintext), *eKeyData);
 
-  // auto request = Consumer::constructDKeyInterest(*contentData, Name("/owner"), Name("/consumer"));
-  // BOOST_CHECK_EQUAL(request->getName(), Name("/owner/consumer/D-KEY/location/8am/9am"));
+  auto ckRequest = Consumer::constructCKeyInterest(*contentData);
+  BOOST_CHECK_EQUAL(ckRequest->getName().getPrefix(-1), Name("/producer/CK"));
 
-  // auto dKey = Consumer::decryptDKeyData(*dKeyData, consumerPriKey);
-  // auto dKeys = owner.getDecryptionKeys();
-  // auto rightDKey = dKeys[Name("/location/8am/9am")];
-  // BOOST_CHECK_EQUAL_COLLECTIONS(dKey.begin(), dKey.end(),
-  //                               rightDKey.begin(), rightDKey.end());
+  auto request = Consumer::constructDKeyInterest(*ckData, Name("/consumer"));
+  BOOST_CHECK_EQUAL(request->getName().getPrefix(-3),
+                    Name("/access-manager/NAC/producer/dataset1/example/KDK"));
 
-  // auto afterDec = Consumer::decryptContentData(*contentData, dKey);
-  // BOOST_CHECK_EQUAL_COLLECTIONS(plaintext, plaintext + sizeof(plaintext),
-  //                               afterDec.begin(), afterDec.end());
+  auto dKey = Consumer::decryptDKeyData(*dKeyData, consumerPriKey);
+  auto dKeys = owner.getDecryptionKeys();
+  auto rightDKey = dKeys[Name("/producer/dataset1/example")];
+  BOOST_CHECK_EQUAL_COLLECTIONS(dKey.begin(), dKey.end(),
+                                rightDKey.begin(), rightDKey.end());
+
+  auto afterDec = Consumer::decryptContentData(*contentData, *ckData, dKey);
+  BOOST_CHECK_EQUAL_COLLECTIONS(plaintext, plaintext + sizeof(plaintext),
+                                afterDec.begin(), afterDec.end());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

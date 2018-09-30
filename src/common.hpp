@@ -62,6 +62,14 @@ const ndn::name::Component NAME_COMPONENT_E_KEY("KEK");
 const ndn::name::Component NAME_COMPONENT_D_KEY("KDK");
 const ndn::name::Component NAME_COMPONENT_NAC("NAC");
 
+enum {
+  ENCRYPTED_PAYLOAD = 630,
+  ENCRYPTED_AES_KEY = 631,
+  INITIAL_VECTOR = 632,
+  CK_LOCATOR = 633
+};
+
+
 } // namespace nac
 } // namespace ndn
 

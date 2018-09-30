@@ -28,14 +28,6 @@
 namespace ndn {
 namespace nac {
 
-enum {
-  ENCRYPTED_PAYLOAD = 630,
-  ENCRYPTED_AES_KEY = 631,
-  INITIAL_VECTOR = 632,
-  ENCRYPTED_CK = 633,
-  CK_LOCATOR = 634
-};
-
 Block
 encryptDataContentWithCK(const uint8_t* payload, size_t payloadLen,
                          const uint8_t* key, size_t keyLen);
@@ -47,6 +39,10 @@ encryptDataContent(const uint8_t* payload, size_t payloadLen,
 
 Buffer
 decryptDataContent(const Block& dataBlock,
+                   const uint8_t* key, size_t keyLen);
+
+Buffer
+decryptDataContent(const Block& dataBlock, const Block& ckBlock,
                    const uint8_t* key, size_t keyLen);
 
 

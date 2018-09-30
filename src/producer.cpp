@@ -35,16 +35,16 @@ Producer::Producer(const security::v2::Certificate& identityCert,
 }
 
 std::tuple<shared_ptr<Data>, shared_ptr<Data>>
-Producer::produce(const Name& name,
-                  const uint8_t* payload, size_t payloadLen,
-                  const Name& asymmetricKeyName, const Buffer& encryptionKey)
+Producer::produce(const Name& name, const uint8_t* payload, size_t payloadLen,
+                  const Data& eKeyData)
 {
   // prepare
+  auto eKeyContent = eKeyData.getContent();
   Block encryptedContent;
   Block encryptedCK;
   std::tie(encryptedContent, encryptedCK) = encryptDataContent(payload, payloadLen,
-                                                               encryptionKey.data(),
-                                                               encryptionKey.size());
+                                                               eKeyContent.value(),
+                                                               eKeyContent.value_size());
   Name ckName = security::v2::extractIdentityFromCertName(m_cert.getName());
   ckName.append("CK").append(std::to_string(random::generateSecureWord32()));
 
@@ -62,35 +62,37 @@ Producer::produce(const Name& name,
 
 
   // ck data packet
+  // Naming Convention: /prefix/CK/<key-id>/ENC-BY/<access manager prefix>
+  //                    /NAC/granularity/KEK/<key-id>
   auto ckData = make_shared<Data>();
   Name ckDataName = ckName;
-  ckDataName.append(NAME_COMPONENT_BY).append(asymmetricKeyName);
+  ckDataName.append(NAME_COMPONENT_BY).append(eKeyData.getName());
   ckData->setName(ckDataName);
   ckData->setContent(encryptedCK);
   m_keyChain.sign(*ckData, signingByCertificate(m_cert));
   return std::make_tuple(data, ckData);
 }
 
-std::tuple<Name, Buffer>
-Producer::parseEKeyData(const Data& eKeyData)
-{
-  // Naming Convention: /prefix/NAC/granularity/KEK/<key-id>
+// std::tuple<Name, Buffer>
+// Producer::parseEKeyData(const Data& eKeyData)
+// {
+//   // Naming Convention: /prefix/NAC/granularity/KEK/<key-id>
 
-  int nac_index = 0;
-  for (size_t i = 0; i < eKeyData.getName().size(); i++) {
-    if (eKeyData.getName().get(i) == NAME_COMPONENT_NAC) {
-      nac_index = i;
-    }
-  }
-  if (nac_index == 0) {
-    BOOST_THROW_EXCEPTION(Error("Unrecognized incoming E-KEY Data Name"));
-  }
+//   int nac_index = 0;
+//   for (size_t i = 0; i < eKeyData.getName().size(); i++) {
+//     if (eKeyData.getName().get(i) == NAME_COMPONENT_NAC) {
+//       nac_index = i;
+//     }
+//   }
+//   if (nac_index == 0) {
+//     BOOST_THROW_EXCEPTION(Error("Unrecognized incoming E-KEY Data Name"));
+//   }
 
-  Name kekName = eKeyData.getName().getSubName(nac_index + 1);
-  auto content = eKeyData.getContent();
-  Buffer encKey(content.value(), content.value_size());
-  return std::make_tuple(kekName, encKey);
-}
+//   Name kekName = eKeyData.getName().getSubName(nac_index + 1);
+//   auto content = eKeyData.getContent();
+//   Buffer encKey(content.value(), content.value_size());
+//   return std::make_tuple(kekName, encKey);
+// }
 
 
 } // namespace nac

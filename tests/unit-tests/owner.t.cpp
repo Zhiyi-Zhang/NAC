@@ -53,7 +53,7 @@ BOOST_AUTO_TEST_CASE(PreparePackets)
   signData(consumerCert);
 
   Owner owner(ownerCert, m_keyChain);
-  auto dKeyData = owner.generateDecKeyData(Name("/access-controller"), Name("/producer/dataset1/example"), consumerCert);
+  auto dKeyData = owner.generateDecKeyData(Name("/producer/dataset1/example"), consumerCert);
 
   std::cout << "dKeyData Data \n" << *dKeyData;
   std::cout << "dKeyData Data size :" << dKeyData->wireEncode().size() << std::endl;

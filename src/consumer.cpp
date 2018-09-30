@@ -26,25 +26,43 @@
 namespace ndn {
 namespace nac {
 
+shared_ptr<Interest>
+Consumer::constructCKeyInterest(const Data& contentData)
+{
+  // Naming Convention: /prefix/CK/<key-id>/ENC-BY/<access manager prefix>
+  //                    /NAC/granularity/KEK/<key-id>
+  // Interest name: /prefix/CK/<key-id>
+  auto contentBlock = contentData.getContent();
+  contentBlock.parse();
+  Name cKeyName(contentBlock.get(tlv::Name));
+  auto request = make_shared<Interest>(cKeyName);
+  request->setMustBeFresh(true);
+  return request;
+}
 
 shared_ptr<Interest>
-Consumer::constructDKeyInterest(const Data& contentData,
-                                const Name& ownerPrefix, const Name& consumerIdentity)
+Consumer::constructDKeyInterest(const Data& ckData, const Name& consumerIdentity)
 {
   int index = 0;
-  for (size_t i = 0; i < contentData.getName().size(); i++) {
-    if (contentData.getName().get(i) == NAME_COMPONENT_BY) {
+  for (size_t i = 0; i < ckData.getName().size(); i++) {
+    if (ckData.getName().get(i) == NAME_COMPONENT_BY) {
       index = i;
     }
   }
   if (index == 0) {
     BOOST_THROW_EXCEPTION(Error("Unrecognized incoming Data Name"));
   }
-  Name asymmetricKeyName = contentData.getName().getSubName(index + 1);
-  Name interestName(ownerPrefix);
-  interestName.append(consumerIdentity)
-    .append(NAME_COMPONENT_D_KEY)
-    .append(asymmetricKeyName);
+  // /<access manager prefix>/NAC/granularity/KEK/<key-id>
+  Name asymmetricKeyName = ckData.getName().getSubName(index + 1);
+  auto asymmetricKeyId = ckData.getName().get(-1);
+
+  // Name Convention: /<access manager prefix>/NAC/granularity/KDK/<key-id>/ENC-BY
+  //                  consumer-identity/KEY/<key-id>
+
+  Name interestName(asymmetricKeyName.getPrefix(-2));
+  interestName.append(NAME_COMPONENT_D_KEY).append(asymmetricKeyId)
+    .append(NAME_COMPONENT_BY)
+    .append(consumerIdentity);
   auto request = make_shared<Interest>(interestName);
   request->setMustBeFresh(true);
   return request;
@@ -52,9 +70,9 @@ Consumer::constructDKeyInterest(const Data& contentData,
 
 
 Buffer
-Consumer::decryptContentData(const Data& contentData, const Buffer& dKey)
+Consumer::decryptContentData(const Data& contentData, const Data& cKeyData, const Buffer& dKey)
 {
-  Buffer content = decryptDataContent(contentData.getContent(),
+  Buffer content = decryptDataContent(contentData.getContent(), cKeyData.getContent(),
                                       dKey.data(), dKey.size());
   std::cerr << "Successfully decrypt the content data and get the content in plaintext \n";
   return content;

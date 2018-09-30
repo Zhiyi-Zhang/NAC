@@ -74,7 +74,7 @@ encryptDataContent(const uint8_t* payload, size_t payloadLen,
   encryptedBlock.encode();
 
   // create ck block
-  auto CKBlock = makeEmptyBlock(ENCRYPTED_CK);
+  auto CKBlock = makeEmptyBlock(tlv::Content);
   CKBlock.push_back(makeBinaryBlock(ENCRYPTED_AES_KEY,
                                     encryptedAesKey.data(), encryptedAesKey.size()));
   CKBlock.push_back(makeBinaryBlock(INITIAL_VECTOR,
@@ -102,6 +102,24 @@ decryptDataContent(const Block& dataBlock,
   return payload;
 }
 
+Buffer
+decryptDataContent(const Block& dataBlock, const Block& ckBlock,
+                   const uint8_t* key, size_t keyLen)
+{
+  dataBlock.parse();
+  ckBlock.parse();
+  Buffer iv(ckBlock.get(INITIAL_VECTOR).value(),
+            ckBlock.get(INITIAL_VECTOR).value_size());
+  Buffer encryptedAesKey(ckBlock.get(ENCRYPTED_AES_KEY).value(),
+                         ckBlock.get(ENCRYPTED_AES_KEY).value_size());
+  Buffer encryptedPayload(dataBlock.get(ENCRYPTED_PAYLOAD).value(),
+                          dataBlock.get(ENCRYPTED_PAYLOAD).value_size());
+
+  auto aesKey = crypto::Rsa::decrypt(key, keyLen, encryptedAesKey.data(), encryptedAesKey.size());
+  auto payload = crypto::Aes::decrypt(aesKey.data(), aesKey.size(),
+                                      encryptedPayload.data(), encryptedPayload.size(), iv);
+  return payload;
+}
 
 }
 }

@@ -37,8 +37,7 @@ Owner::Owner(const security::v2::Certificate& identityCert,
 }
 
 shared_ptr<Data>
-Owner::generateDecKeyData(const Name& prefix,
-                          const Name& granularity,
+Owner::generateDecKeyData(const Name& granularity,
                           const security::v2::Certificate& consumerCert)
 {
   Buffer encKey = consumerCert.getPublicKey();
@@ -57,7 +56,7 @@ Owner::generateDecKeyData(const Name& prefix,
   // Naming Convention: /prefix/NAC/granularity/KDK/<key-id>/ENC-BY
   //                    consumer-identity/KEY/<key-id>
   auto dKeyData = make_shared<Data>();
-  Name name(prefix);
+  Name name(security::v2::extractIdentityFromCertName(m_cert.getName()));
   name.append(NAME_COMPONENT_NAC).append(granularity).append(NAME_COMPONENT_D_KEY)
     .append(security::v2::extractKeyNameFromCertName(consumerCert.getName()));
   dKeyData->setName(name);
@@ -68,8 +67,7 @@ Owner::generateDecKeyData(const Name& prefix,
 }
 
 shared_ptr<Data>
-Owner::generateEncKeyData(const Name& prefix,
-                          const Name& granularity)
+Owner::generateEncKeyData(const Name& granularity)
 {
   Buffer payload;
   auto search = m_encKeys.find(granularity);
@@ -86,7 +84,7 @@ Owner::generateEncKeyData(const Name& prefix,
 
   // Naming Convention: /prefix/NAC/granularity/KEK/<key-id>
   auto eKeyData = make_shared<Data>();
-  Name name(prefix);
+  Name name(security::v2::extractIdentityFromCertName(m_cert.getName()));
   name.append(NAME_COMPONENT_NAC).append(granularity)
     .append(NAME_COMPONENT_E_KEY).append(std::to_string(random::generateSecureWord32()));;
   eKeyData->setName(name);

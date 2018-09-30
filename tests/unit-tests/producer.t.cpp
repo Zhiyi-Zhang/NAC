@@ -49,7 +49,7 @@ BOOST_AUTO_TEST_CASE(PreparePackets)
 
   // create owner and KEK
   Owner owner(ownerCert, m_keyChain);
-  auto eKeyData = owner.generateEncKeyData(Name("/access-controller"), Name("/producer/dataset1/example"));
+  auto eKeyData = owner.generateEncKeyData(Name("/producer/dataset1/example"));
 
   std::cout << "eKeyData Data \n" << *eKeyData;
   std::cout << "eKeyData Data size :" << eKeyData->wireEncode().size() << std::endl;
@@ -58,20 +58,20 @@ BOOST_AUTO_TEST_CASE(PreparePackets)
 
   // create producer
   Producer producer(producerCert, m_keyChain);
-  Name keyName;
-  Buffer keyBuffer;
-  std::tie(keyName, keyBuffer) = producer.parseEKeyData(*eKeyData);
-  BOOST_CHECK_EQUAL(keyName.getPrefix(-2), Name("/producer/dataset1/example"));
+  // Name keyName;
+  // Buffer keyBuffer;
+  // std::tie(keyName, keyBuffer) = producer.parseEKeyData(*eKeyData);
+  // BOOST_CHECK_EQUAL(keyName.getPrefix(-2), Name("/producer/dataset1/example"));
 
-  auto eKeys = owner.getEncryptionKeys();
-  auto rightKey = eKeys[keyName.getPrefix(-2)];
-  BOOST_CHECK_EQUAL_COLLECTIONS(rightKey.begin(), rightKey.end(),
-                                keyBuffer.begin(), keyBuffer.end());
+  // auto eKeys = owner.getEncryptionKeys();
+  // auto rightKey = eKeys[keyName.getPrefix(-2)];
+  // BOOST_CHECK_EQUAL_COLLECTIONS(rightKey.begin(), rightKey.end(),
+  //                               keyBuffer.begin(), keyBuffer.end());
 
   shared_ptr<Data> contentData = nullptr;
   shared_ptr<Data> ckData = nullptr;
-  std::tie(contentData, ckData) = producer.produce(Name("/producer/dataset1/example/data1"), plaintext, sizeof(plaintext),
-                                                   keyName, keyBuffer);
+  std::tie(contentData, ckData) = producer.produce(Name("/producer/dataset1/example/data1"),
+                                                   plaintext, sizeof(plaintext), *eKeyData);
 
   std::cout << "content Data \n" << *contentData;
   std::cout << "content Data size :" << contentData->wireEncode().size() << std::endl;
@@ -83,12 +83,12 @@ BOOST_AUTO_TEST_CASE(PreparePackets)
   std::cout << "ck Data name size :" << ckData->getName().wireEncode().size() << std::endl;
   std::cout << "===============================\n";
 
-  // auto dKeys = owner.getDecryptionKeys();
-  // auto priKey = dKeys[keyName];
-  // auto afterDec = decryptDataContent(contentData->getContent(), priKey.data(), priKey.size());
+  auto dKeys = owner.getDecryptionKeys();
+  auto priKey = dKeys[Name("/producer/dataset1/example")];
+  auto afterDec = decryptDataContent(contentData->getContent(), ckData->getContent(), priKey.data(), priKey.size());
 
-  // BOOST_CHECK_EQUAL_COLLECTIONS(plaintext, plaintext + sizeof(plaintext),
-  //                               afterDec.begin(), afterDec.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(plaintext, plaintext + sizeof(plaintext),
+                                afterDec.begin(), afterDec.end());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

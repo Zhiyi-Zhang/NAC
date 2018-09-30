@@ -42,7 +42,8 @@ public:
   /**
    * @brief Generate the encrypted D-KEY for a consumer
    * @note Naming Convention:
-   *       /prefix/consumer-identity/D-KEY/asymmeticKeyName
+   *       /prefix/NAC/granularity/KDK/<key-id>/ENC-BY
+   *       consumer-identity/KEY/<key-id>
    * @note The generated Data packet will carry the encrypted D-KEY for
    *       the consumer. Consumer can decrypt the D-KEY using the corresponding
    *       private key. The packet will be signed with owner's identity cert.
@@ -53,14 +54,13 @@ public:
    * @return The generated D-KEY Data
    */
   shared_ptr<Data>
-  generateDecKeyData(const Name& prefix,
-                     const Name& asymmeticKeyName,
+  generateDecKeyData(const Name& granularity,
                      const security::v2::Certificate& consumerCert);
 
   /**
    * @brief Generate the encryption key Data packet
    * @note Naming Convention:
-   *       /prefix/E-KEY/asymmeticKeyName
+   *       /prefix/NAC/granularity/KEK/<key-id>
    * @note The generated Data packet will carry the E-KEY (plaintext) for
    *       the producers. The packet will be signed with owner's identity cert.
    *
@@ -69,8 +69,7 @@ public:
    * @return The generated E-KEY Data
    */
   shared_ptr<Data>
-  generateEncKeyData(const Name& prefix,
-                     const Name& asymmeticKeyName);
+  generateEncKeyData(const Name& granularity);
 
   const std::map<Name, Buffer>
   getDecryptionKeys() const

@@ -60,23 +60,22 @@ public:
    *        Producer::parseEKeyData.
    * @param encryptionKey The encryption key used to encrypte the payload.
    *        Obtained from Producer::parseEKeyData.
-   * @return The generated content Data
+   * @return The generated content Data and CK Data
    */
   std::tuple<shared_ptr<Data>, shared_ptr<Data>>
-  produce(const Name& name,
-          const uint8_t* payload, size_t payloadLen,
-          const Name& asymmetricKeyName, const Buffer& encryptionKey);
+  produce(const Name& name, const uint8_t* payload, size_t payloadLen,
+          const Data& eKeyData);
 
-  /**
-   * @brief Parse E-KEY Data produced by the owner
-   * @note The function will NOT verify the signature. The app developer should
-   *       first verify the Data signature and then invoke the function.
-   *
-   * @param eKeyData The E-KEY Data packet
-   * @return The asymmetric key name and the key buffer
-   */
-  static std::tuple<Name, Buffer>
-  parseEKeyData(const Data& eKeyData);
+  // /**
+  //  * @brief Parse E-KEY Data produced by the owner
+  //  * @note The function will NOT verify the signature. The app developer should
+  //  *       first verify the Data signature and then invoke the function.
+  //  *
+  //  * @param eKeyData The E-KEY Data packet
+  //  * @return The asymmetric key name and the key buffer
+  //  */
+  // static std::tuple<Name, Buffer>
+  // parseEKeyData(const Data& eKeyData);
 
 private:
   security::v2::Certificate m_cert;
